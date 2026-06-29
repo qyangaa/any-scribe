@@ -1,0 +1,76 @@
+name: Release
+
+# Push a tag like v0.1.0 to build, sign, notarize, and publish a DMG.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # needed to create the GitHub Release
+
+jobs:
+  release:
+    runs-on: macos-14   # Apple Silicon
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Cache whisper.cpp build
+        id: whisper-cache
+        uses: actions/cache@v4
+        with:
+          path: whisper.cpp/build
+          key: whisper-metal-${{ runner.os }}-v1
+
+      - name: Build whisper.cpp (Metal, arm64)
+        if: steps.whisper-cache.outputs.cache-hit != 'true'
+        run: |
+          command -v cmake >/dev/null || brew install cmake
+          git clone --depth 1 https://github.com/ggerganov/whisper.cpp whisper.cpp
+          cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 -DGGML_NATIVE=OFF \
+            -DGGML_METAL=ON -DGGML_METAL_EMBED_LIBRARY=ON -DWHISPER_BUILD_EXAMPLES=ON
+          cmake --build whisper.cpp/build -j --config Release
+
+      - name: Import Developer ID certificate
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERT="$RUNNER_TEMP/cert.p12"
+          KC="$RUNNER_TEMP/app.keychain-db"
+          echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$CERT"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KC"
+          security import "$CERT" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KC" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KC"
+          security list-keychain -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+
+      - name: Build, sign & bundle the app
+        env:
+          WHISPER_BUILD: ${{ github.workspace }}/whisper.cpp/build
+          SIGN_IDENTITY: ${{ secrets.SIGN_IDENTITY }}
+          NOTARIZE: "1"
+        run: ./package-app.sh
+
+      - name: Create, notarize & staple the DMG
+        env:
+          NOTARIZE: "1"
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: ./make-dmg.sh
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" AnyScribe-*.dmg \
+            --title "Any Scribe $GITHUB_REF_NAME" --generate-notes

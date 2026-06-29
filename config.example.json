@@ -1,0 +1,18 @@
+{
+  "outputDir": "/Users/you/Documents/Any Scribe",
+  "model": "large-v3-turbo",
+  "whisperServerUrl": "http://127.0.0.1:8178",
+  "language": "auto",
+  "micLanguage": null,
+  "systemLanguage": null,
+  "prompt": null,
+  "chunkSeconds": 5,
+  "overlapSeconds": 1,
+  "micLabel": "Me",
+  "systemLabel": "Them",
+  "micDeviceName": null,
+  "whisperServerBin": null,
+  "echoCancellation": true,
+  "dedupeCrossTalk": true,
+  "serverIdleMinutes": 5
+}
