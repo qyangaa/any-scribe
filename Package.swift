@@ -11,8 +11,7 @@ let package = Package(
         .executable(name: "AnyScribe", targets: ["AnyScribe"])
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
-        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.0.0")
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0")
     ],
     targets: [
         // Shared logic: capture, pipeline, whisper, transcript, config, Recorder.
@@ -30,10 +29,7 @@ let package = Package(
         // Menu-bar app front-end.
         .executableTarget(
             name: "AnyScribe",
-            dependencies: [
-                "ScribeCore",
-                .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts")
-            ]
+            dependencies: ["ScribeCore"]
         )
     ]
 )

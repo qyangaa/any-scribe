@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
 import ScribeCore
-import KeyboardShortcuts
 
 /// Folder + language + model settings, persisted to the shared config.json (auto-saved on change).
 struct SettingsView: View {
@@ -54,7 +53,11 @@ struct SettingsView: View {
             }
 
             Section("Shortcut") {
-                KeyboardShortcuts.Recorder("Start / stop recording:", name: .toggleRecording)
+                HStack {
+                    Text("Start / stop recording:")
+                    Spacer()
+                    HotKeyRecorder().frame(width: 170, height: 24)
+                }
                 Text("Global hotkey — works from any app. Press it once to start, again to stop.")
                     .font(.caption).foregroundStyle(.secondary)
             }

@@ -2,7 +2,6 @@ import AppKit
 import SwiftUI
 import Combine
 import ScribeCore
-import KeyboardShortcuts
 
 /// Owns the NSStatusItem. Left-click toggles recording (one click). Right-click / control-click
 /// opens a menu for Settings, the live transcript, the transcripts folder, and Quit.
@@ -33,9 +32,10 @@ final class MenuBarController {
         viewModel.$savedPath.receive(on: RunLoop.main)
             .sink { [weak self] path in if let path { self?.notifySaved(path) } }.store(in: &cancellables)
 
-        // Global start/stop hotkey (same shortcut toggles).
-        KeyboardShortcuts.onKeyDown(for: .toggleRecording) { [weak self] in
-            self?.viewModel.toggle()
+        // Global start/stop hotkey (same shortcut toggles). Carbon-based; fires on the main thread.
+        GlobalHotKey.shared.start { [weak self] in
+            guard let self else { return }
+            Task { @MainActor in self.viewModel.toggle() }
         }
     }
 
