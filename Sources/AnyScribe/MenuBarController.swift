@@ -37,6 +37,13 @@ final class MenuBarController {
             guard let self else { return }
             Task { @MainActor in self.viewModel.toggle() }
         }
+
+        // First launch: open Settings so the user can pick a folder, download a model, and see
+        // the shortcut before recording.
+        if !UserDefaults.standard.bool(forKey: "didOnboard") {
+            UserDefaults.standard.set(true, forKey: "didOnboard")
+            DispatchQueue.main.async { [weak self] in self?.showSettings() }
+        }
     }
 
     // MARK: - Status button
