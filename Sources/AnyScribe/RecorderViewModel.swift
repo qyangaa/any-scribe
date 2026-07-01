@@ -48,7 +48,8 @@ final class RecorderViewModel: ObservableObject {
         serverManager.idleSeconds = config.serverIdleSeconds
         let recorder = Recorder(config: config, serverManager: serverManager)
         recorder.onLine = { [weak self] line in
-            Task { @MainActor in self?.appendOrMerge(line) }
+            guard let self else { return }
+            Task { @MainActor in self.appendOrMerge(line) }
         }
         self.recorder = recorder
 
@@ -95,8 +96,9 @@ final class RecorderViewModel: ObservableObject {
     private func startTimer() {
         timer?.invalidate()
         let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self else { return }
             Task { @MainActor in
-                guard let self, let start = self.startDate else { return }
+                guard let start = self.startDate else { return }
                 self.elapsed = Date().timeIntervalSince(start)
             }
         }
