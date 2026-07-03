@@ -39,7 +39,7 @@ actor TranscriptWriter {
         self.sessionStart = sessionStart
         self.dedupe = dedupe
         self.onLine = onLine
-        let dir = URL(fileURLWithPath: config.outputDir, isDirectory: true)
+        let dir = URL(fileURLWithPath: config.resolvedOutputDir, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
         let stamp = DateFormatter()

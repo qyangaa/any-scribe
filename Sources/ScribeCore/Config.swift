@@ -95,10 +95,10 @@ public struct Config: Codable, Equatable {
         configDir.appendingPathComponent("models", isDirectory: true)
     }
 
-    /// Default transcript output folder for first-run users.
+    /// Default transcript output folder for first-run users — a clean, always-present location.
     public static func defaultOutputDir() -> String {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Documents/Any Scribe").path
+            .appendingPathComponent("Downloads/anyscribe").path
     }
 
     // MARK: - Load / Save
@@ -150,6 +150,13 @@ public struct Config: Codable, Equatable {
     /// Path to the ggml model file for `model`.
     public var modelPath: URL {
         Config.modelsDir.appendingPathComponent("ggml-\(model).bin")
+    }
+
+    /// `outputDir` sanitized to an absolute path, falling back to the default for empty or relative
+    /// junk (e.g. a stray keystroke). Prevents ever trying to write transcripts under "/".
+    public var resolvedOutputDir: String {
+        let expanded = (outputDir as NSString).expandingTildeInPath
+        return expanded.hasPrefix("/") ? expanded : Config.defaultOutputDir()
     }
 
     var serverHost: String {

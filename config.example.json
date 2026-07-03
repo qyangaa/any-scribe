@@ -1,5 +1,5 @@
 {
-  "outputDir": "/Users/you/Documents/Any Scribe",
+  "outputDir": "/Users/you/Downloads/anyscribe",
   "model": "large-v3-turbo",
   "whisperServerUrl": "http://127.0.0.1:8178",
   "language": "auto",

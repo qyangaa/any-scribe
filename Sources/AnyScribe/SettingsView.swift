@@ -19,8 +19,10 @@ struct SettingsView: View {
         Form {
             Section("Output") {
                 HStack {
-                    TextField("Folder", text: $config.outputDir)
-                        .textFieldStyle(.roundedBorder)
+                    Text(config.outputDir)
+                        .lineLimit(1).truncationMode(.middle)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Button("Choose…") { pickFolder() }
                 }
                 Text("Transcripts are saved here as Markdown, with a tail-able .live.txt while recording.")
