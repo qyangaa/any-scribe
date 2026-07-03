@@ -18,8 +18,12 @@ final class RecorderViewModel: ObservableObject {
     private var recorder: Recorder?
     private var timer: Timer?
     private var startDate: Date?
-    /// Kept across recordings so the whisper-server stays warm (idle-shutdown handled inside).
-    private let serverManager = WhisperServerManager()
+    /// Shared with push-to-talk so the whisper-server stays warm across both modes.
+    private let serverManager: WhisperServerManager
+
+    init(serverManager: WhisperServerManager) {
+        self.serverManager = serverManager
+    }
 
     /// Called on app quit — stop the warm whisper-server so it doesn't outlive the app.
     func shutdownServer() {

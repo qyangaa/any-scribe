@@ -47,11 +47,20 @@ system out ──▶ ScreenCaptureKit ─▶ ChunkPipeline ┘
 
 ## Using it
 
-- **Start/stop:** left-click the menu-bar icon, or the global shortcut (default **⌥⌘R**, rebindable in
-  Settings → Shortcut — works from any app, no Accessibility permission needed).
+Two modes on one engine:
+
+- **Meeting transcription (long-form):** left-click the menu-bar icon, or tap the global shortcut
+  (default **⌥⌘R**), to start/stop. Captures mic + system audio, labels `Me`/`Them`, saves Markdown.
+- **Voice input (push-to-talk):** **hold** the voice-input hotkey (default **⌃⌥Space**), speak, and
+  **release** — the text is transcribed and **pasted at your cursor** in whatever app is focused.
+  Requires the **Accessibility** permission (to paste); grant it in Settings → Voice input on first use.
+
+Other:
 - **Right-click the icon** for the menu: Settings, Show Live Transcript, Open Transcripts Folder, Quit.
-- **Settings:** output folder, language, model (+ download), echo-cancellation & cross-talk toggles,
-  the shortcut. All persisted to `~/.config/anyscribe/config.json`.
+- **Vocabulary:** add your names/jargon in Settings so both modes spell them correctly (Whisper is
+  biased toward those words). One per line.
+- **Settings:** folder, language, model (+ download), the two shortcuts, vocabulary, echo/cross-talk.
+  Persisted to `~/.config/anyscribe/config.json`.
 
 ## Configuration
 
@@ -64,6 +73,7 @@ system out ──▶ ScreenCaptureKit ─▶ ChunkPipeline ┘
 | `language` | `zh`, `en`, … or `auto`. Don't force a language the speaker isn't using — Whisper will *translate* instead of transcribe. Use `auto` for mixed zh+en. |
 | `micLanguage` / `systemLanguage` | Per-stream language override, or `null` to use `language`. |
 | `prompt` | Optional initial prompt to bias decoding (domain vocab), or `null`. |
+| `vocabulary` | List of your words/names/jargon; biases recognition toward correct spellings in both modes. |
 | `echoCancellation` | Apple Voice-Processing AEC on the mic. Default on (keep it for speakers). |
 | `dedupeCrossTalk` | Drop residual echo duplicates across streams. Default on. |
 | `serverIdleMinutes` | Keep the whisper-server warm this long after a recording (instant restarts), then free its RAM. Default 5. |

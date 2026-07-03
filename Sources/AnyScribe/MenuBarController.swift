@@ -8,7 +8,9 @@ import ScribeCore
 @MainActor
 final class MenuBarController {
     private let statusItem: NSStatusItem
-    private let viewModel = RecorderViewModel()
+    private let serverManager = WhisperServerManager()
+    private let viewModel: RecorderViewModel
+    private let pttController: PushToTalkController
     private var cancellables = Set<AnyCancellable>()
 
     private var settingsWindow: NSWindow?
@@ -16,6 +18,8 @@ final class MenuBarController {
 
     init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        viewModel = RecorderViewModel(serverManager: serverManager)
+        pttController = PushToTalkController(serverManager: serverManager)
         if let button = statusItem.button {
             button.target = self
             button.action = #selector(statusClicked)
@@ -32,11 +36,24 @@ final class MenuBarController {
         viewModel.$savedPath.receive(on: RunLoop.main)
             .sink { [weak self] path in if let path { self?.notifySaved(path) } }.store(in: &cancellables)
 
-        // Global start/stop hotkey (same shortcut toggles). Carbon-based; fires on the main thread.
-        GlobalHotKey.shared.start { [weak self] in
+        // Ignore push-to-talk while a meeting recording is running (single mic).
+        pttController.isMeetingRecording = { [weak self] in self?.viewModel.state == .recording }
+
+        // Global hotkeys (Carbon; fire on the main thread).
+        // Toggle = meeting recording; Push-to-talk = hold to dictate, release to paste at cursor.
+        GlobalHotKey.shared.register(.toggle, combo: HotKeyStore.load("toggle")) { [weak self] in
             guard let self else { return }
             Task { @MainActor in self.viewModel.toggle() }
         }
+        GlobalHotKey.shared.register(.ptt, combo: HotKeyStore.load("ptt"),
+            onDown: { [weak self] in
+                guard let self else { return }
+                Task { @MainActor in self.pttController.begin() }
+            },
+            onUp: { [weak self] in
+                guard let self else { return }
+                Task { @MainActor in self.pttController.end() }
+            })
 
         // First launch: open Settings so the user can pick a folder, download a model, and see
         // the shortcut before recording.

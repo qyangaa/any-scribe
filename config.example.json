@@ -6,6 +6,7 @@
   "micLanguage": null,
   "systemLanguage": null,
   "prompt": null,
+  "vocabulary": ["Anthropic", "Claude", "Xcode"],
   "chunkSeconds": 5,
   "overlapSeconds": 1,
   "micLabel": "Me",

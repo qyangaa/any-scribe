@@ -18,6 +18,9 @@ public struct Config: Codable, Equatable {
     /// Optional initial prompt to bias decoding — helpful for code-switching and
     /// domain vocabulary, e.g. "以下是普通话和英文混合的技术会议。".
     public var prompt: String?
+    /// User-provided words/names/phrases (jargon, proper nouns) to bias recognition toward the
+    /// correct spelling. Fed to Whisper as part of the initial prompt.
+    public var vocabulary: [String]?
     /// Length of each audio window sent to whisper, in seconds.
     public var chunkSeconds: Double
     /// Overlap between consecutive windows, in seconds (prevents word cutoff at boundaries).
@@ -55,6 +58,7 @@ public struct Config: Codable, Equatable {
             micLanguage: nil,
             systemLanguage: nil,
             prompt: nil,
+            vocabulary: nil,
             chunkSeconds: 5,
             overlapSeconds: 1,
             micLabel: "Me",
@@ -111,6 +115,26 @@ public struct Config: Codable, Equatable {
     /// Load the config if present, otherwise return defaults (used by the app on first run).
     public static func loadOrDefaults() -> Config {
         (try? load()) ?? defaults(outputDir: defaultOutputDir())
+    }
+
+    /// Whisper initial prompt combining any custom `prompt` with the vocabulary list. Whisper biases
+    /// decoding toward words in its initial prompt, improving recognition of names/jargon. Bounded to
+    /// stay well under whisper's ~224-token prompt limit.
+    public func effectivePrompt() -> String? {
+        var parts: [String] = []
+        if let prompt = prompt?.trimmingCharacters(in: .whitespacesAndNewlines), !prompt.isEmpty {
+            parts.append(prompt)
+        }
+        let words = (vocabulary ?? [])
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        if !words.isEmpty {
+            var hint = "Vocabulary: " + words.joined(separator: ", ")
+            if hint.count > 800 { hint = String(hint.prefix(800)) }   // ~200 tokens
+            parts.append(hint)
+        }
+        let combined = parts.joined(separator: " ")
+        return combined.isEmpty ? nil : combined
     }
 
     public func save() throws {

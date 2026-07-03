@@ -50,9 +50,10 @@ public final class Recorder: @unchecked Sendable {
         let client = WhisperClient(inferenceURL: config.inferenceURL)
         let micLang = config.micLanguage ?? config.language
         let sysLang = config.systemLanguage ?? config.language
-        let micPipe = ChunkPipeline(label: config.micLabel, language: micLang, prompt: config.prompt,
+        let prompt = config.effectivePrompt()   // custom prompt + vocabulary bias
+        let micPipe = ChunkPipeline(label: config.micLabel, language: micLang, prompt: prompt,
                                     config: config, client: client, writer: writer, sessionStart: sessionStart)
-        let sysPipe = ChunkPipeline(label: config.systemLabel, language: sysLang, prompt: config.prompt,
+        let sysPipe = ChunkPipeline(label: config.systemLabel, language: sysLang, prompt: prompt,
                                     config: config, client: client, writer: writer, sessionStart: sessionStart)
 
         let mic = MicCapture(preferredDeviceName: config.micDeviceName, echoCancellation: config.echoCancellationOn) { micPipe.append($0) }

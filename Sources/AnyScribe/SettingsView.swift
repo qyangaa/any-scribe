@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var modelPresent = false
     @State private var downloading = false
     @State private var downloadError: String?
+    @State private var axTrusted = false
 
     private let languages: [(String, String)] = [
         ("zh", "Chinese (zh)"), ("en", "English (en)"), ("auto", "Auto-detect")
@@ -52,13 +53,48 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("Shortcut") {
+            Section("Shortcuts") {
                 HStack {
-                    Text("Start / stop recording:")
+                    Text("Meeting start / stop:")
                     Spacer()
-                    HotKeyRecorder().frame(width: 170, height: 24)
+                    HotKeyRecorder(name: "toggle").frame(width: 170, height: 24)
                 }
-                Text("Global hotkey — works from any app. Press it once to start, again to stop.")
+                HStack {
+                    Text("Voice input (hold to talk):")
+                    Spacer()
+                    HotKeyRecorder(name: "ptt").frame(width: 170, height: 24)
+                }
+                Text("Global hotkeys, work from any app. Tap the meeting key to start/stop; hold the voice-input key, speak, and release to paste the text at your cursor.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("Voice input") {
+                HStack {
+                    if axTrusted {
+                        Label("Accessibility granted", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green).font(.callout)
+                    } else {
+                        Label("Accessibility needed", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange).font(.callout)
+                        Button("Grant…") {
+                            TextInserter.requestTrust()
+                            TextInserter.openAccessibilitySettings()
+                        }
+                    }
+                    Spacer()
+                }
+                Text("Pasting dictated text at the cursor needs macOS Accessibility permission. Grant it to Any Scribe in System Settings → Privacy & Security → Accessibility.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("Vocabulary") {
+                TextEditor(text: Binding(
+                    get: { (config.vocabulary ?? []).joined(separator: "\n") },
+                    set: { config.vocabulary = $0.components(separatedBy: "\n") }))
+                    .font(.body.monospaced())
+                    .frame(height: 90)
+                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(.quaternary))
+                Text("One word or name per line (people, products, jargon). These bias recognition toward the correct spelling in both voice input and meetings.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
@@ -75,7 +111,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 440)
-        .onAppear { refreshModelPresent() }
+        .onAppear { refreshModelPresent(); axTrusted = TextInserter.isTrusted }
         .onChange(of: config) { _ in
             try? config.save()
             refreshModelPresent()
