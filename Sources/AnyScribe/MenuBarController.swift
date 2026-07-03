@@ -42,7 +42,7 @@ final class MenuBarController {
             .sink { [weak self] path in if let path { self?.notifySaved(path) } }.store(in: &cancellables)
 
         // Ignore push-to-talk while a meeting recording is running (single mic).
-        pttController.isMeetingRecording = { [weak self] in self?.viewModel.state == .recording }
+        pttController.isMeetingRecording = { [weak self] in (self?.viewModel.state ?? .idle) != .idle }
 
         // Global hotkeys (Carbon; fire on the main thread).
         // Toggle = meeting recording; Push-to-talk = hold to dictate, release to paste at cursor.
@@ -80,9 +80,16 @@ final class MenuBarController {
             button.toolTip = "Click to start recording"
         case .starting:
             button.image = nil
-            button.attributedTitle = NSAttributedString(string: "● …",
-                attributes: [.foregroundColor: NSColor.systemOrange])
-            button.toolTip = "Starting…"
+            button.attributedTitle = NSAttributedString(string: "◌ Loading…",
+                attributes: [.foregroundColor: NSColor.systemOrange,
+                             .font: NSFont.systemFont(ofSize: NSFont.systemFontSize)])
+            button.toolTip = "Loading the model…"
+        case .stopping:
+            button.image = nil
+            button.attributedTitle = NSAttributedString(string: "◌ Saving…",
+                attributes: [.foregroundColor: NSColor.secondaryLabelColor,
+                             .font: NSFont.systemFont(ofSize: NSFont.systemFontSize)])
+            button.toolTip = "Finishing…"
         case .recording:
             button.image = nil
             let dot = NSAttributedString(string: "● ", attributes: [.foregroundColor: NSColor.systemRed])

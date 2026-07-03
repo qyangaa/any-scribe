@@ -18,10 +18,7 @@ struct LiveTranscriptView: View {
             Divider()
             if viewModel.lines.isEmpty {
                 Spacer()
-                Text(viewModel.state == .recording
-                     ? "Listening… transcript will appear here."
-                     : "Not recording. Click the menu-bar icon to start.")
-                    .foregroundStyle(.secondary)
+                emptyState
                 Spacer()
             } else {
                 transcript
@@ -30,13 +27,36 @@ struct LiveTranscriptView: View {
         .frame(minWidth: 420, minHeight: 320)
     }
 
+    @ViewBuilder private var emptyState: some View {
+        switch viewModel.state {
+        case .starting:
+            VStack(spacing: 8) {
+                ProgressView()
+                Text("Loading the model… first start takes a few seconds.")
+                    .foregroundStyle(.secondary)
+            }
+        case .recording:
+            Text("Listening… transcript will appear here.").foregroundStyle(.secondary)
+        case .stopping:
+            Text("Saving transcript…").foregroundStyle(.secondary)
+        case .idle:
+            Text("Not recording. Click the menu-bar icon to start.").foregroundStyle(.secondary)
+        }
+    }
+
+    private var statusLabel: (String, Color) {
+        switch viewModel.state {
+        case .idle:      return ("Idle", .secondary)
+        case .starting:  return ("Loading model…", .orange)
+        case .recording: return ("Recording", .red)
+        case .stopping:  return ("Saving…", .secondary)
+        }
+    }
+
     private var header: some View {
         HStack(spacing: 8) {
-            Circle()
-                .fill(viewModel.state == .recording ? Color.red : Color.secondary)
-                .frame(width: 9, height: 9)
-            Text(viewModel.state == .recording ? "Recording" : "Idle")
-                .font(.headline)
+            Circle().fill(statusLabel.1).frame(width: 9, height: 9)
+            Text(statusLabel.0).font(.headline)
             Spacer()
             Text("\(viewModel.micLabel) = mic · \(viewModel.systemLabel) = system audio")
                 .font(.caption).foregroundStyle(.secondary)

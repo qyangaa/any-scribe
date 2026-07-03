@@ -5,7 +5,7 @@ import ScribeCore
 /// Observable wrapper around `Recorder` for the menu-bar UI.
 @MainActor
 final class RecorderViewModel: ObservableObject {
-    enum State: Equatable { case idle, starting, recording }
+    enum State: Equatable { case idle, starting, recording, stopping }
 
     @Published private(set) var state: State = .idle
     @Published private(set) var elapsed: TimeInterval = 0
@@ -18,6 +18,8 @@ final class RecorderViewModel: ObservableObject {
     private var recorder: Recorder?
     private var timer: Timer?
     private var startDate: Date?
+    private var startTask: Task<Void, Never>?
+    private var pendingStop = false
     /// Shared with push-to-talk so the whisper-server stays warm across both modes.
     private let serverManager: WhisperServerManager
 
@@ -33,8 +35,8 @@ final class RecorderViewModel: ObservableObject {
     func toggle() {
         switch state {
         case .idle: start()
-        case .recording: stop()
-        case .starting: break
+        case .starting, .recording: stop()
+        case .stopping: break
         }
     }
 
@@ -44,6 +46,7 @@ final class RecorderViewModel: ObservableObject {
         lines = []
         savedPath = nil
         lastError = nil
+        pendingStop = false
 
         let config = Config.loadOrDefaults()
         micLabel = config.micLabel
@@ -57,31 +60,53 @@ final class RecorderViewModel: ObservableObject {
         }
         self.recorder = recorder
 
-        Task { @MainActor in
+        startTask = Task { @MainActor in
             do {
                 try await recorder.start()
+                if self.pendingStop {                 // user pressed stop during model load
+                    await recorder.stop()
+                    self.finishStopped(path: nil)
+                    return
+                }
                 self.startDate = Date()
                 self.state = .recording
                 self.startTimer()
             } catch {
-                self.recorder = nil
-                self.state = .idle
-                self.lastError = "\(error)"
+                let wasCancel = self.pendingStop
+                await recorder.stop()                 // clean up any partial capture (mic/system)
+                self.finishStopped(path: nil)
+                if !(error is CancellationError) && !wasCancel { self.lastError = "\(error)" }
             }
         }
     }
 
     func stop() {
-        guard state == .recording || state == .starting else { return }
-        let rec = recorder
-        timer?.invalidate(); timer = nil
-        Task { @MainActor in
-            let path = await rec?.stop()
-            self.recorder = nil
-            self.savedPath = path
-            self.elapsed = 0
-            self.state = .idle
+        switch state {
+        case .starting:
+            // Model still loading; can't cleanly interrupt it — stop as soon as startup finishes.
+            pendingStop = true
+            state = .stopping
+        case .recording:
+            state = .stopping                          // immediate feedback; teardown is async
+            timer?.invalidate(); timer = nil
+            let rec = recorder
+            Task { @MainActor in
+                let path = await rec?.stop()
+                self.finishStopped(path: path)
+            }
+        case .idle, .stopping:
+            break
         }
+    }
+
+    private func finishStopped(path: String?) {
+        timer?.invalidate(); timer = nil
+        recorder = nil
+        startTask = nil
+        pendingStop = false
+        elapsed = 0
+        if let path { savedPath = path }
+        state = .idle
     }
 
     /// Merge sliding-window overlap: if a new line on the same stream overlaps the previous one
