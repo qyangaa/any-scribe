@@ -28,7 +28,12 @@ final class MenuBarController {
         updateButton()
 
         viewModel.$state.receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.updateButton() }.store(in: &cancellables)
+            .sink { [weak self] state in
+                guard let self else { return }
+                self.updateButton()
+                // Auto-open the live transcript when a meeting starts (without stealing focus).
+                if state == .starting || state == .recording { self.openTranscript(activate: false) }
+            }.store(in: &cancellables)
         viewModel.$elapsed.receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateButton() }.store(in: &cancellables)
         viewModel.$lastError.receive(on: RunLoop.main)
@@ -159,19 +164,25 @@ final class MenuBarController {
             let window = makeWindow(title: "Any Scribe Settings",
                                     content: SettingsView(),
                                     size: NSSize(width: 460, height: 600))
+            window.center()
             settingsWindow = window
         }
         present(settingsWindow)
     }
 
-    @objc private func showTranscript() {
+    @objc private func showTranscript() { openTranscript(activate: true) }
+
+    /// `activate: false` shows the window without stealing focus (used to auto-open on record start
+    /// so it doesn't pull you out of your meeting app).
+    private func openTranscript(activate: Bool) {
         if transcriptWindow == nil {
             let window = makeWindow(title: "Live Transcript",
                                     content: LiveTranscriptView(viewModel: viewModel),
                                     size: NSSize(width: 480, height: 420))
+            window.center()
             transcriptWindow = window
         }
-        present(transcriptWindow)
+        present(transcriptWindow, activate: activate)
     }
 
     private func makeWindow<Content: View>(title: String, content: Content, size: NSSize) -> NSWindow {
@@ -184,11 +195,14 @@ final class MenuBarController {
         return window
     }
 
-    private func present(_ window: NSWindow?) {
+    private func present(_ window: NSWindow?, activate: Bool = true) {
         guard let window else { return }
-        NSApp.activate(ignoringOtherApps: true)
-        window.center()
-        window.makeKeyAndOrderFront(nil)
+        if activate {
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            window.orderFrontRegardless()   // show without stealing focus
+        }
     }
 
     // MARK: - Feedback

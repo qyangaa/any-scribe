@@ -18,8 +18,10 @@ final class ListeningHUD {
 
     func hide() { panel?.orderOut(nil) }
 
+    private let width: CGFloat = 380
+
     private func makePanel() -> NSPanel {
-        let p = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 230, height: 54),
+        let p = NSPanel(contentRect: NSRect(x: 0, y: 0, width: width, height: 54),
                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         p.isFloatingPanel = true
         p.level = .statusBar
@@ -41,7 +43,8 @@ final class ListeningHUD {
         lbl.font = .systemFont(ofSize: 15, weight: .medium)
         lbl.textColor = .white
         lbl.alignment = .center
-        lbl.frame = NSRect(x: 12, y: 16, width: 230 - 24, height: 22)
+        lbl.lineBreakMode = .byTruncatingHead   // show the latest words of a live preview
+        lbl.frame = NSRect(x: 14, y: 16, width: width - 28, height: 22)
         lbl.autoresizingMask = [.width]
         blur.addSubview(lbl)
 

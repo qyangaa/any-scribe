@@ -21,6 +21,9 @@ final class PushToTalkController {
         guard !active, !isMeetingRecording() else { return }
         let config = Config.loadOrDefaults()
         let session = DictationSession(config: config, serverManager: serverManager)
+        session.onPartial = { [weak self] text in
+            Task { @MainActor in self?.hud.update("🎙 " + text) }
+        }
         do {
             try session.start(echoCancellation: config.echoCancellationOn)
         } catch let error as ScribeError {
