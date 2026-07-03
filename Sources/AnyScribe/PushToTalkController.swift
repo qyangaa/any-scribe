@@ -22,7 +22,8 @@ final class PushToTalkController {
         let config = Config.loadOrDefaults()
         let session = DictationSession(config: config, serverManager: serverManager)
         session.onPartial = { [weak self] text in
-            Task { @MainActor in self?.hud.update("🎙 " + text) }
+            guard let self else { return }
+            Task { @MainActor in self.hud.update("🎙 " + text) }
         }
         do {
             try session.start(echoCancellation: config.echoCancellationOn)
