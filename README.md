@@ -51,7 +51,7 @@ Two modes on one engine:
 
 - **Meeting transcription (long-form):** left-click the menu-bar icon, or tap the global shortcut
   (default **⌥⌘R**), to start/stop. Captures mic + system audio, labels `Me`/`Them`, saves Markdown.
-- **Voice input (push-to-talk):** **hold** the voice-input hotkey (default **⌃⌥Space**), speak, and
+- **Voice input (push-to-talk):** **hold** the voice-input hotkey (default **⌥D**), speak, and
   **release** — the text is transcribed and **pasted at your cursor** in whatever app is focused.
   Requires the **Accessibility** permission (to paste); grant it in Settings → Voice input on first use.
 

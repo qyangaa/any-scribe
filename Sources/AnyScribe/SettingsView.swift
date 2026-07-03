@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Combine
 import ScribeCore
 
 /// Folder + language + model settings, persisted to the shared config.json (auto-saved on change).
@@ -112,6 +113,10 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 440)
         .onAppear { refreshModelPresent(); axTrusted = TextInserter.isTrusted }
+        // Live-refresh the Accessibility status so it flips to granted without reopening Settings.
+        .onReceive(Timer.publish(every: 1.5, on: .main, in: .common).autoconnect()) { _ in
+            axTrusted = TextInserter.isTrusted
+        }
         .onChange(of: config) { _ in
             try? config.save()
             refreshModelPresent()

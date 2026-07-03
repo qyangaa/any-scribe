@@ -10,7 +10,7 @@ struct HotKeyCombo: Equatable {
     static let defaultToggle = HotKeyCombo(
         keyCode: UInt32(kVK_ANSI_R), carbonModifiers: UInt32(optionKey | cmdKey), display: "⌥⌘R")
     static let defaultPTT = HotKeyCombo(
-        keyCode: UInt32(kVK_Space), carbonModifiers: UInt32(controlKey | optionKey), display: "⌃⌥Space")
+        keyCode: UInt32(kVK_ANSI_D), carbonModifiers: UInt32(optionKey), display: "⌥D")
 }
 
 /// Persists hotkeys in UserDefaults, namespaced by name ("toggle", "ptt").
