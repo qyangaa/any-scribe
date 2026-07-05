@@ -88,6 +88,12 @@ struct SettingsView: View {
                 }
                 Text("Pasting dictated text at the cursor needs macOS Accessibility permission. Grant it to Any Scribe in System Settings → Privacy & Security → Accessibility.")
                     .font(.caption).foregroundStyle(.secondary)
+
+                Toggle("Save every voice input to a CSV log", isOn: Binding(
+                    get: { config.saveVoiceLog ?? false },
+                    set: { config.saveVoiceLog = $0 }))
+                Text("Appends each dictation as a row to voice-input.csv in your output folder.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             Section("Vocabulary") {

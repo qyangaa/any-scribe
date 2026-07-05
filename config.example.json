@@ -15,5 +15,6 @@
   "whisperServerBin": null,
   "echoCancellation": true,
   "dedupeCrossTalk": true,
-  "serverIdleMinutes": 5
+  "serverIdleMinutes": 5,
+  "saveVoiceLog": false
 }

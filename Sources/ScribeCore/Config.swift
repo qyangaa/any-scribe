@@ -43,11 +43,19 @@ public struct Config: Codable, Equatable {
     /// Minutes to keep the whisper-server warm after a recording before shutting it down to free
     /// memory (app only). Null = 5. `serverIdleSeconds` resolves it.
     public var serverIdleMinutes: Int?
+    /// Append every push-to-talk result to a one-column CSV log in the output folder. Null = off.
+    public var saveVoiceLog: Bool?
 
     /// Resolved defaults for the optional toggles (absent in older config files → enabled).
     public var echoCancellationOn: Bool { echoCancellation ?? true }
     public var dedupeCrossTalkOn: Bool { dedupeCrossTalk ?? true }
     public var serverIdleSeconds: Double { Double((serverIdleMinutes ?? 5) * 60) }
+    public var saveVoiceLogOn: Bool { saveVoiceLog ?? false }
+
+    /// Append-only CSV log of voice-input results (one column). Lives in the output folder.
+    public var voiceLogURL: URL {
+        URL(fileURLWithPath: resolvedOutputDir, isDirectory: true).appendingPathComponent("voice-input.csv")
+    }
 
     public static func defaults(outputDir: String) -> Config {
         Config(
@@ -67,7 +75,8 @@ public struct Config: Codable, Equatable {
             whisperServerBin: nil,
             echoCancellation: true,
             dedupeCrossTalk: true,
-            serverIdleMinutes: 5
+            serverIdleMinutes: 5,
+            saveVoiceLog: false
         )
     }
 

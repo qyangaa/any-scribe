@@ -56,6 +56,7 @@ final class PushToTalkController {
 
     private func deliver(_ text: String) {
         guard !text.isEmpty else { hud.hide(); return }
+        VoiceLog.append(text, config: Config.loadOrDefaults())   // log even if paste is blocked
         guard TextInserter.isTrusted else {
             TextInserter.requestTrust()
             TextInserter.openAccessibilitySettings()

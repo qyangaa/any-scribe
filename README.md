@@ -77,6 +77,7 @@ Other:
 | `echoCancellation` | Apple Voice-Processing AEC on the mic. Default on (keep it for speakers). |
 | `dedupeCrossTalk` | Drop residual echo duplicates across streams. Default on. |
 | `serverIdleMinutes` | Keep the whisper-server warm this long after a recording (instant restarts), then free its RAM. Default 5. |
+| `saveVoiceLog` | Append every push-to-talk result to `voice-input.csv` (one column) in the output folder. Default off. |
 | `micLabel` / `systemLabel` | Speaker labels (default `Me` / `Them`). |
 | `chunkSeconds` / `overlapSeconds` | Sliding-window size and overlap. |
 | `whisperServerBin` | Override the whisper-server path (defaults to the bundled engine, then Homebrew). |
