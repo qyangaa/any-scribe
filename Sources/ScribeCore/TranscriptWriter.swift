@@ -66,16 +66,18 @@ actor TranscriptWriter {
         // Live echo suppression: if the OTHER stream already showed a near-identical line within
         // the window, don't echo this one to the live view (the final file dedups by energy).
         // Same-stream overlap (sliding-window repeats) is merged downstream in the UI / finalize.
-        if dedupe, liveRecent.contains(where: { $0.label != label
+        let suppressed = dedupe && liveRecent.contains(where: { $0.label != label
             && abs($0.time.timeIntervalSince(time)) <= dedupeWindow
-            && TranscriptText.isRedundant($0.text, clean) }) {
-            return
+            && TranscriptText.isRedundant($0.text, clean) })
+        if !suppressed {
+            liveRecent.append((text: clean, label: label, time: time))
+            if liveRecent.count > 16 { liveRecent.removeFirst(liveRecent.count - 16) }
+            appendLive(line)
+            onLine?(line.time, line.label, line.text)
         }
-        liveRecent.append((text: clean, label: label, time: time))
-        if liveRecent.count > 16 { liveRecent.removeFirst(liveRecent.count - 16) }
 
-        appendLive(line)
-        onLine?(line.time, line.label, line.text)
+        // Keep the .md file current from the very first line (survives crashes / a forgotten stop).
+        writeMarkdown(endTime: Date())
     }
 
     private func appendLive(_ line: Line) {
@@ -92,9 +94,9 @@ actor TranscriptWriter {
         "[\(Self.clock.string(from: line.time))] **\(line.label):** \(line.text)"
     }
 
-    /// Write the final, timestamp-ordered, de-duplicated markdown file. Returns its path.
-    @discardableResult
-    func finalize(endTime: Date) -> String {
+    /// Write the timestamp-ordered, de-duplicated markdown file. Called incrementally on each line
+    /// (so the .md is always current) and once more on stop with the final duration.
+    private func writeMarkdown(endTime: Date) {
         let ordered = lines.sorted { $0.time < $1.time }
         let cleaned = dedupe ? dedupeLines(ordered) : ordered
         let duration = endTime.timeIntervalSince(sessionStart)
@@ -109,6 +111,12 @@ actor TranscriptWriter {
             out += format(line) + "\n"
         }
         try? out.data(using: .utf8)?.write(to: finalURL, options: .atomic)
+    }
+
+    /// Finalize with the accurate end time. Returns the file path.
+    @discardableResult
+    func finalize(endTime: Date) -> String {
+        writeMarkdown(endTime: endTime)
         return finalURL.path
     }
 
