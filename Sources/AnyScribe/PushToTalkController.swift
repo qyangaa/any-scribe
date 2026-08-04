@@ -21,6 +21,10 @@ final class PushToTalkController {
         guard !active, !isMeetingRecording() else { return }
         let config = Config.loadOrDefaults()
         let session = DictationSession(config: config, serverManager: serverManager)
+        session.onListening = { [weak self] in
+            guard let self else { return }
+            Task { @MainActor in self.hud.update("🎙 Listening…") }
+        }
         do {
             try session.start(echoCancellation: config.echoCancellationOn)
         } catch let error as ScribeError {
@@ -33,7 +37,7 @@ final class PushToTalkController {
         }
         self.session = session
         active = true
-        hud.show("🎙 Listening…")
+        hud.show("⏳ Starting mic…")
     }
 
     /// Hotkey released — transcribe and paste.

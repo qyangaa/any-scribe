@@ -37,8 +37,11 @@ public final class Recorder: @unchecked Sendable {
     /// Start the whisper-server and both capture streams. Throws if the model is missing,
     /// the server fails, or a capture source can't start (e.g. missing permission).
     public func start() async throws {
-        guard FileManager.default.fileExists(atPath: config.modelPath.path) else {
-            throw ScribeError.missingModel(config.model)
+        let transcriber = config.makeTranscriber()
+        if transcriber.needsLocalServer {
+            guard FileManager.default.fileExists(atPath: config.modelPath.path) else {
+                throw ScribeError.missingModel(config.model)
+            }
         }
 
         let sessionStart = Date()
@@ -47,14 +50,13 @@ public final class Recorder: @unchecked Sendable {
             lineSink?(Line(time: time, label: label, text: text))
         }
 
-        let client = WhisperClient(inferenceURL: config.inferenceURL)
         let micLang = config.micLanguage ?? config.language
         let sysLang = config.systemLanguage ?? config.language
         let prompt = config.effectivePrompt()   // custom prompt + vocabulary bias
         let micPipe = ChunkPipeline(label: config.micLabel, language: micLang, prompt: prompt,
-                                    config: config, client: client, writer: writer, sessionStart: sessionStart)
+                                    config: config, client: transcriber, writer: writer, sessionStart: sessionStart)
         let sysPipe = ChunkPipeline(label: config.systemLabel, language: sysLang, prompt: prompt,
-                                    config: config, client: client, writer: writer, sessionStart: sessionStart)
+                                    config: config, client: transcriber, writer: writer, sessionStart: sessionStart)
 
         let mic = MicCapture(preferredDeviceName: config.micDeviceName, echoCancellation: config.echoCancellationOn) { micPipe.append($0) }
         let sys = SystemAudioCapture { sysPipe.append($0) }
@@ -74,20 +76,22 @@ public final class Recorder: @unchecked Sendable {
             throw error
         }
 
-        // Now bring up the server (buffers keep filling during any model warmup). A warm shared
-        // server (app) returns instantly; otherwise we spawn one for this session (CLI).
-        do {
-            if let serverManager {
-                try await serverManager.ensureRunning(config: config)
-            } else {
-                let server = WhisperServer(config: config)
-                try await server.start()
-                self.server = server
+        // Now bring up the server if this engine needs it (buffers keep filling during warmup).
+        // A warm shared server (app) returns instantly; the CLI spawns one for this session.
+        if transcriber.needsLocalServer {
+            do {
+                if let serverManager {
+                    try await serverManager.ensureRunning(config: config)
+                } else {
+                    let server = WhisperServer(config: config)
+                    try await server.start()
+                    self.server = server
+                }
+            } catch {
+                mic.stop()
+                await sys.stop()
+                throw error
             }
-        } catch {
-            mic.stop()
-            await sys.stop()
-            throw error
         }
 
         // Begin transcribing the buffered + ongoing audio.

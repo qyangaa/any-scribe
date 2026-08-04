@@ -60,6 +60,10 @@ final class MenuBarController {
                 Task { @MainActor in self.pttController.end() }
             })
 
+        // Pre-warm the shared mic engine so the first push-to-talk doesn't swallow opening words
+        // (engine + voice-processing setup takes hundreds of ms; do it now, not on first hold).
+        PersistentMic.shared.prewarm(echoCancellation: Config.loadOrDefaults().echoCancellationOn)
+
         // First launch: open Settings so the user can pick a folder, download a model, and see
         // the shortcut before recording.
         if !UserDefaults.standard.bool(forKey: "didOnboard") {

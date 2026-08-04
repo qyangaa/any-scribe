@@ -59,8 +59,17 @@ Other:
 - **Right-click the icon** for the menu: Settings, Show Live Transcript, Open Transcripts Folder, Quit.
 - **Vocabulary:** add your names/jargon in Settings so both modes spell them correctly (Whisper is
   biased toward those words). One per line.
-- **Settings:** folder, language, model (+ download), the two shortcuts, vocabulary, echo/cross-talk.
-  Persisted to `~/.config/anyscribe/config.json`.
+- **Settings:** folder, engine, language, model (+ download), the two shortcuts, vocabulary,
+  echo/cross-talk. Persisted to `~/.config/anyscribe/config.json`.
+
+### Transcription engines
+
+- **Local (default):** whisper.cpp on-device — no audio ever leaves your machine.
+- **OpenAI API (optional):** often more accurate; voice input streams over OpenAI's Realtime API
+  (server-side VAD — text is ready almost the moment you release the key), with an automatic
+  one-shot fallback if the stream fails. **Opt-in only:** paste your own API key in Settings —
+  it's stored in your **macOS Keychain**, never in a config file, and the app has no built-in key.
+  In this mode your audio is sent to OpenAI and usage costs API credits.
 
 ## Configuration
 
@@ -78,6 +87,8 @@ Other:
 | `dedupeCrossTalk` | Drop residual echo duplicates across streams. Default on. |
 | `serverIdleMinutes` | Keep the whisper-server warm this long after a recording (instant restarts), then free its RAM. Default 5. |
 | `saveVoiceLog` | Append every push-to-talk result to `voice-input.csv` (one column) in the output folder. Default off. |
+| `transcriber` | `local` (default) or `openai`. The OpenAI key is pasted in Settings and stored in the macOS Keychain — not in this file. |
+| `openaiTranscriptionModel` | Cloud model, default `gpt-4o-transcribe`. |
 | `micLabel` / `systemLabel` | Speaker labels (default `Me` / `Them`). |
 | `chunkSeconds` / `overlapSeconds` | Sliding-window size and overlap. |
 | `whisperServerBin` | Override the whisper-server path (defaults to the bundled engine, then Homebrew). |

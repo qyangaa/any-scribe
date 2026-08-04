@@ -37,4 +37,64 @@ public enum TranscriptText {
         if na.contains(nb) || nb.contains(na) { return true }
         return similarity(na, nb) >= threshold
     }
+
+    /// Remove verbatim injections of the vocabulary list. Whisper sometimes copies the bias
+    /// prompt into the transcript over quiet spans ("… currently the audit is only Claude, agent,
+    /// Codex, Arky, OpenClaw …"). Any run of ≥3 consecutive vocabulary entries, in list order and
+    /// joined list-style, is treated as parroting and removed.
+    public static func stripVocabularyParroting(_ text: String, vocabulary: [String]) -> String {
+        let words = vocabulary.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        guard words.count >= 3 else { return text }
+        var result = text
+        var length = words.count
+        while length >= 3 {
+            for start in 0...(words.count - length) {
+                let run = words[start..<(start + length)]
+                // Tolerate ", " / " " / "，" separators between the copied entries.
+                let pattern = run.map { NSRegularExpression.escapedPattern(for: $0) }
+                    .joined(separator: "[,，]?\\s+")
+                if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) {
+                    let range = NSRange(result.startIndex..., in: result)
+                    result = regex.stringByReplacingMatches(in: result, range: range, withTemplate: "")
+                }
+            }
+            length -= 1
+        }
+        // Tidy leftover doubled separators/spaces from the removal.
+        result = result.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+        result = result.replacingOccurrences(of: #"\s+([,.，。!?])"#, with: "$1", options: .regularExpression)
+        result = result.replacingOccurrences(of: #"[,，]\s*[,，]"#, with: ",", options: .regularExpression)
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Whisper appends stock outro hallucinations to trailing silence ("See you in the next
+    /// video."). Trim any of them (repeatedly) off the END of otherwise-real text.
+    public static func trimTrailingHallucinations(_ text: String) -> String {
+        let phrases = [
+            "see you in the next video", "see you in next video", "see you next video",
+            "see you next time", "see you in the next one", "thanks for watching",
+            "thank you for watching", "please subscribe", "like and subscribe",
+            "don't forget to subscribe", "bye bye", "goodbye",
+            "下次再见", "我们下期再见", "下期再见", "谢谢观看", "感谢观看", "再见"
+        ]
+        var result = text
+        var changed = true
+        while changed {
+            changed = false
+            let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
+            let lowered = trimmed.lowercased()
+            for phrase in phrases {
+                for suffix in [phrase, phrase + ".", phrase + "!", phrase + "。", phrase + "！"] {
+                    if lowered.hasSuffix(suffix), lowered != suffix {
+                        result = String(trimmed.dropLast(suffix.count))
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        changed = true
+                        break
+                    }
+                }
+                if changed { break }
+            }
+        }
+        return result
+    }
 }

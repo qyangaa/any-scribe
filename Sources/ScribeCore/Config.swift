@@ -45,12 +45,32 @@ public struct Config: Codable, Equatable {
     public var serverIdleMinutes: Int?
     /// Append every push-to-talk result to a one-column CSV log in the output folder. Null = off.
     public var saveVoiceLog: Bool?
+    /// Speech-to-text engine: "local" (whisper.cpp, on-device; default) or "openai" (OpenAI
+    /// transcription API — audio is sent to OpenAI; often more accurate; requires an API key).
+    public var transcriber: String?
+    /// LEGACY (pre-Keychain) location of the OpenAI key; migrated to the Keychain on load and
+    /// scrubbed from the file. Never written anymore.
+    public var openaiApiKey: String?
+    /// OpenAI transcription model. Null = "gpt-4o-transcribe" (alternative: "whisper-1").
+    public var openaiTranscriptionModel: String?
 
     /// Resolved defaults for the optional toggles (absent in older config files → enabled).
     public var echoCancellationOn: Bool { echoCancellation ?? true }
     public var dedupeCrossTalkOn: Bool { dedupeCrossTalk ?? true }
     public var serverIdleSeconds: Double { Double((serverIdleMinutes ?? 5) * 60) }
     public var saveVoiceLogOn: Bool { saveVoiceLog ?? false }
+    /// True when the OpenAI transcriber is selected AND a key is available.
+    public var usesOpenAITranscriber: Bool { (transcriber ?? "local") == "openai" && resolvedOpenAIKey != nil }
+    /// Key for OpenAI STT: the user-pasted value in the macOS Keychain — the only source.
+    public var resolvedOpenAIKey: String? { KeychainStore.openAIKey() }
+
+    /// Clean an engine's transcript: strip verbatim vocabulary-prompt parroting and stock
+    /// trailing hallucinations ("See you in the next video.").
+    public func postProcess(_ text: String) -> String {
+        var out = TranscriptText.stripVocabularyParroting(text, vocabulary: vocabulary ?? [])
+        out = TranscriptText.trimTrailingHallucinations(out)
+        return out
+    }
 
     /// Append-only CSV log of voice-input results (one column). Lives in the output folder.
     public var voiceLogURL: URL {
@@ -76,7 +96,10 @@ public struct Config: Codable, Equatable {
             echoCancellation: true,
             dedupeCrossTalk: true,
             serverIdleMinutes: 5,
-            saveVoiceLog: false
+            saveVoiceLog: false,
+            transcriber: "local",
+            openaiApiKey: nil,
+            openaiTranscriptionModel: nil
         )
     }
 
@@ -118,7 +141,14 @@ public struct Config: Codable, Equatable {
             throw ScribeError.missingConfig(url.path)
         }
         let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(Config.self, from: data)
+        var config = try JSONDecoder().decode(Config.self, from: data)
+        // One-time migration: a key stored by older builds moves to the Keychain and is scrubbed.
+        if let legacy = config.openaiApiKey, !legacy.isEmpty {
+            if KeychainStore.openAIKey() == nil { KeychainStore.setOpenAIKey(legacy) }
+            config.openaiApiKey = nil
+            try? config.save()
+        }
+        return config
     }
 
     /// Load the config if present, otherwise return defaults (used by the app on first run).
@@ -138,7 +168,10 @@ public struct Config: Codable, Equatable {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         if !words.isEmpty {
-            var hint = "Vocabulary: " + words.joined(separator: ", ")
+            // Whisper treats this prompt as preceding transcript — a bare comma list gets copied
+            // verbatim into output over quiet spans. Phrase it as prose to bias spelling without
+            // inviting parroting (residual injections are stripped post-transcription).
+            var hint = "Terms that may come up include " + words.joined(separator: ", ") + "."
             if hint.count > 800 { hint = String(hint.prefix(800)) }   // ~200 tokens
             parts.append(hint)
         }

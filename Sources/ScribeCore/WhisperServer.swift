@@ -6,7 +6,7 @@ public final class WhisperServer {
     private let config: Config
     private var process: Process?
 
-    init(config: Config) {
+    public init(config: Config) {
         self.config = config
     }
 
@@ -68,7 +68,7 @@ public final class WhisperServer {
     var isRunning: Bool { process?.isRunning ?? false }
 
     /// Start the server and block (async) until it answers, or throw.
-    func start() async throws {
+    public func start() async throws {
         guard let binary = Self.findBinary(override: config.whisperServerBin) else {
             throw ScribeError.missingWhisperServer
         }
@@ -128,7 +128,7 @@ public final class WhisperServer {
         }
     }
 
-    func stop() {
+    public func stop() {
         process?.terminate()
         process = nil
     }

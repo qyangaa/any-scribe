@@ -6,7 +6,11 @@
   "micLanguage": null,
   "systemLanguage": null,
   "prompt": null,
-  "vocabulary": ["Anthropic", "Claude", "Xcode"],
+  "vocabulary": [
+    "Anthropic",
+    "Claude",
+    "Xcode"
+  ],
   "chunkSeconds": 5,
   "overlapSeconds": 1,
   "micLabel": "Me",
@@ -16,5 +20,7 @@
   "echoCancellation": true,
   "dedupeCrossTalk": true,
   "serverIdleMinutes": 5,
-  "saveVoiceLog": false
+  "saveVoiceLog": false,
+  "transcriber": "local",
+  "openaiTranscriptionModel": null
 }

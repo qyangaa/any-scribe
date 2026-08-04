@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var downloading = false
     @State private var downloadError: String?
     @State private var axTrusted = false
+    @State private var openaiKey = KeychainStore.openAIKey() ?? ""
 
     private let languages: [(String, String)] = [
         ("zh", "Chinese (zh)"), ("en", "English (en)"), ("auto", "Auto-detect")
@@ -30,6 +31,19 @@ struct SettingsView: View {
             }
 
             Section("Transcription") {
+                Picker("Engine", selection: Binding(
+                    get: { config.transcriber ?? "local" },
+                    set: { config.transcriber = $0 })) {
+                    Text("Local (whisper.cpp, on-device)").tag("local")
+                    Text("OpenAI API (cloud)").tag("openai")
+                }
+                if (config.transcriber ?? "local") == "openai" {
+                    SecureField("OpenAI API key (sk-…)", text: $openaiKey)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: openaiKey) { KeychainStore.setOpenAIKey($0) }
+                    Text("Often more accurate, no local model needed — but your audio is sent to OpenAI and each minute costs API credits. The key is stored in your macOS Keychain.")
+                        .font(.caption).foregroundStyle(.orange)
+                }
                 Picker("Language", selection: $config.language) {
                     ForEach(languages, id: \.0) { Text($0.1).tag($0.0) }
                 }

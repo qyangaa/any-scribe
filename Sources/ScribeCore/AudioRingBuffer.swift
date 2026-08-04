@@ -61,6 +61,23 @@ enum Audio {
         return resampleLinear(mono, from: sourceRate, to: targetRate)
     }
 
+    /// Resample 16 kHz mono to an arbitrary rate (the OpenAI Realtime API wants 24 kHz pcm16).
+    static func resample(_ mono16k: [Float], to rate: Double) -> [Float] {
+        if abs(rate - targetRate) < 1 { return mono16k }
+        return resampleLinear(mono16k, from: targetRate, to: rate)
+    }
+
+    /// Little-endian 16-bit PCM bytes (no header) from Float samples.
+    static func pcm16Data(_ samples: [Float]) -> Data {
+        var data = Data(capacity: samples.count * 2)
+        for sample in samples {
+            let clamped = max(-1.0, min(1.0, sample))
+            var v = Int16(clamped * 32767.0).littleEndian
+            withUnsafeBytes(of: &v) { data.append(contentsOf: $0) }
+        }
+        return data
+    }
+
     private static func resampleLinear(_ input: [Float], from sourceRate: Double, to destRate: Double) -> [Float] {
         guard !input.isEmpty else { return [] }
         let ratio = destRate / sourceRate

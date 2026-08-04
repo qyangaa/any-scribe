@@ -7,7 +7,8 @@ final class ChunkPipeline: @unchecked Sendable {
     private let label: String
     private let language: String
     private let prompt: String?
-    private let client: WhisperClient
+    private let client: any Transcribing
+    private let config: Config
     private let writer: TranscriptWriter
     private let sessionStart: Date
 
@@ -22,11 +23,12 @@ final class ChunkPipeline: @unchecked Sendable {
     private var running = false
     private var loopTask: Task<Void, Never>?
 
-    init(label: String, language: String, prompt: String?, config: Config, client: WhisperClient, writer: TranscriptWriter, sessionStart: Date) {
+    init(label: String, language: String, prompt: String?, config: Config, client: any Transcribing, writer: TranscriptWriter, sessionStart: Date) {
         self.label = label
         self.language = language
         self.prompt = prompt
         self.client = client
+        self.config = config
         self.writer = writer
         self.sessionStart = sessionStart
         self.windowSamples = Int(config.chunkSeconds * Audio.targetRate)
@@ -112,7 +114,8 @@ final class ChunkPipeline: @unchecked Sendable {
         guard level >= silenceThreshold else { return }
         let wav = Audio.wavData(window)
         do {
-            let text = try await client.transcribe(wav: wav, language: language, prompt: prompt)
+            var text = try await client.transcribe(wav: wav, language: language, prompt: prompt)
+            text = config.postProcess(text)
             guard !text.isEmpty else { return }
             let offset = Double(startIndex) / Audio.targetRate
             let time = sessionStart.addingTimeInterval(offset)
